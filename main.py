@@ -7,19 +7,13 @@ import matplotlib.dates as mdates
 from matplotlib.ticker import MultipleLocator
 from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.stattools import adfuller
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from sklearn.preprocessing import StandardScaler
 
 
 # ===========================================
 # 1- EDA
 # ===========================================
-def create_twentieth_dataset(datasetname):
-    dataset = pd.read_csv(datasetname)
-    dataset["Date"] = pd.to_datetime(dataset["Date"])
-    twentieth_dataset = dataset[dataset["Date"].dt.year >= 2000]
-    return twentieth_dataset
-
-
 def time_series_plot(dataset):
 
     plt.figure(figsize=(14, 7))
@@ -70,13 +64,47 @@ def ADF_test(dataset):
         print("this dataset is Non-Stationary")
 
 
+def autocorrelation(dataset):
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
+    plot_acf(dataset["Price"], lags=40, ax=ax1)
+    plot_pacf(dataset["Price"], lags=40, ax=ax2)
+    plt.show()
+
+
+def monthly_volatility(dataset):
+    dataset['Returns'] = dataset['Price'].pct_change() * 100  
+    
+    top_returns = dataset.nlargest(5, 'Returns')
+    print(top_returns[['Returns']])  
+
+    plt.figure(figsize=(14, 5))
+    plt.plot(dataset.index, dataset['Returns'], color='red', linewidth=0.8)
+    plt.title('monthly Volatility persent')
+    plt.grid(True)
+    plt.show()
+
+
+def plot_long_term_trend(dataset):
+    dataset['MA_12'] = dataset['Price'].rolling(window=12).mean()
+    dataset['MA_60'] = dataset['Price'].rolling(window=60).mean()
+
+    plt.figure(figsize=(14, 6))
+    plt.plot(dataset.index, dataset['Price'], label='main price', linewidth=1, alpha=0.5)
+    plt.plot(dataset.index, dataset['MA_12'], label='year AVG', linewidth=2)
+    plt.plot(dataset.index, dataset['MA_60'], label='5 years AVG', linewidth=2)
+    plt.legend()
+    plt.show()
+
+
 # ===========================================
 # 2- PreProcess
 # ===========================================
 def make_stationary_dataset(dataset):
     dataset["Log_Return"] = np.log(dataset["Price"]).diff()
     dataset.dropna(inplace=True)
-    print(dataset.head())
+    # print(dataset.head())
+
+    return dataset
 
 
 def create_x_y(log_return):
@@ -109,14 +137,17 @@ if __name__ == "__main__":
 
     dataset = pd.read_csv("monthly.csv")
     dataset["Date"] = pd.to_datetime(dataset["Date"])
+    dataset.set_index("Date", inplace=True)
 
     # 1. EDA
-    # twentieth_dataset=create_twentieth_dataset("monthly.csv")
-    # time_series_plot(twentieth_dataset)
+    # time_series_plot(dataset)
     # check_missing(dataset)
     # decomposition(dataset)
     # ADF_test(dataset)
+    # autocorrelation(dataset)
+    # monthly_volatility(dataset)
+    # plot_long_term_trend(dataset)
 
     # 2. PreProcess
-    make_stationary_dataset(dataset)
+    # stationary_dataset = make_stationary_dataset(dataset)
     # create_x_y(dataset["Log_Return"])

@@ -5,8 +5,9 @@ from tensorflow.keras.layers import Dense, SimpleRNN
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.ticker import MultipleLocator
-import os
-import seaborn as sns
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.stattools import adfuller
+
 
 # ===========================================
 # 1- EDA
@@ -19,7 +20,7 @@ def create_twentieth_dataset(datasetname):
 
 def time_series_plot(dataset):
 
-    plt.figure(figsize=(14, 7))  
+    plt.figure(figsize=(14, 7))
 
     plt.plot(dataset["Date"], dataset["Price"], linewidth=2, color="blue")
 
@@ -30,18 +31,56 @@ def time_series_plot(dataset):
     plt.grid(True, linestyle="--", alpha=0.7)
 
     ax = plt.gca()
-    ax.xaxis.set_major_locator(mdates.YearLocator(1))  
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))  
+    ax.xaxis.set_major_locator(mdates.YearLocator(1))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
 
-    ax.yaxis.set_major_locator(MultipleLocator(500))  
+    ax.yaxis.set_major_locator(MultipleLocator(500))
 
     plt.xticks(rotation=45)
 
     plt.tight_layout()
     plt.show()
 
+def check_missing(dataset):
+    main = pd.read_csv(dataset)
+    column_names = list(main.columns)
+    for i in column_names:
+        total = len(main[i])
+        missing = main[i].isna().sum()
+        existing = total - missing
+        print(f"there is {missing} missing {i} in {existing} values (Total: {total})")
+     
+def decomposition(dataset):
+    decomposition = seasonal_decompose(dataset.set_index("Date")["Price"].dropna(), model="additive", period=12)
+    decomposition.plot()
+    plt.show()
 
-if __name__=="__main__":
-    #1. EDA
-    twentieth_dataset=create_twentieth_dataset("monthly.csv")
-    time_series_plot(twentieth_dataset)
+
+def ADF_test(dataset):
+    result = adfuller(dataset["Price"])
+    p_value = result[1]
+    print(f"ADF-value: {result[0]}")
+    print(f"p-value: {result[1]}")
+
+    if p_value > 0.05:
+        print("this dataset is Non-Stationary")
+
+
+# ===========================================
+# 2- PreProcess
+# ===========================================
+
+
+
+if __name__ == "__main__":
+    dataset = pd.read_csv("monthly.csv")
+    dataset["Date"] = pd.to_datetime(dataset["Date"])
+    # 1. EDA
+    # twentieth_dataset=create_twentieth_dataset("monthly.csv")
+    # time_series_plot(twentieth_dataset)
+    # check_missing(dataset)
+    # decomposition(dataset)
+    # ADF_test(dataset)
+
+    # 2. PreProcess
+    

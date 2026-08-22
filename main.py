@@ -72,26 +72,26 @@ def autocorrelation(dataset):
 
 
 def monthly_volatility(dataset):
-    dataset['Returns'] = dataset['Price'].pct_change() * 100  
-    
-    top_returns = dataset.nlargest(5, 'Returns')
-    print(top_returns[['Returns']])  
+    dataset["Returns"] = dataset["Price"].pct_change() * 100
+
+    top_returns = dataset.nlargest(5, "Returns")
+    print(top_returns[["Returns"]])
 
     plt.figure(figsize=(14, 5))
-    plt.plot(dataset.index, dataset['Returns'], color='red', linewidth=0.8)
-    plt.title('monthly Volatility persent')
+    plt.plot(dataset.index, dataset["Returns"], color="red", linewidth=0.8)
+    plt.title("monthly Volatility persent")
     plt.grid(True)
     plt.show()
 
 
 def plot_long_term_trend(dataset):
-    dataset['MA_12'] = dataset['Price'].rolling(window=12).mean()
-    dataset['MA_60'] = dataset['Price'].rolling(window=60).mean()
+    dataset["MA_12"] = dataset["Price"].rolling(window=12).mean()
+    dataset["MA_60"] = dataset["Price"].rolling(window=60).mean()
 
     plt.figure(figsize=(14, 6))
-    plt.plot(dataset.index, dataset['Price'], label='main price', linewidth=1, alpha=0.5)
-    plt.plot(dataset.index, dataset['MA_12'], label='year AVG', linewidth=2)
-    plt.plot(dataset.index, dataset['MA_60'], label='5 years AVG', linewidth=2)
+    plt.plot(dataset.index, dataset["Price"], label="main price", linewidth=1, alpha=0.5)
+    plt.plot(dataset.index, dataset["MA_12"], label="year AVG", linewidth=2)
+    plt.plot(dataset.index, dataset["MA_60"], label="5 years AVG", linewidth=2)
     plt.legend()
     plt.show()
 
@@ -107,7 +107,11 @@ def make_stationary_dataset(dataset):
     return dataset
 
 
-def create_x_y(log_return):
+def filter_early_years(dataset, start_year=1880):
+    return dataset[dataset.index.year >= start_year]
+
+
+def RNN_sequence_creation(log_return):
     series = log_return.dropna().values.reshape(-1, 1)
 
     scaler = StandardScaler()
@@ -132,6 +136,8 @@ def create_x_y(log_return):
     print(f"number of training data: {len(X_train)}")
     print(f"number of testng data: {len(X_test)}")
 
+    return X_train, X_test, y_train, y_test
+
 
 if __name__ == "__main__":
 
@@ -149,5 +155,5 @@ if __name__ == "__main__":
     # plot_long_term_trend(dataset)
 
     # 2. PreProcess
-    # stationary_dataset = make_stationary_dataset(dataset)
-    # create_x_y(dataset["Log_Return"])
+    stationary_dataset = make_stationary_dataset(dataset)
+    X_train, X_test, y_train, y_test = RNN_sequence_creation(stationary_dataset["Log_Return"])

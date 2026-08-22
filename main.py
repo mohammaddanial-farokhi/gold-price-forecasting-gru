@@ -100,6 +100,7 @@ def plot_long_term_trend(dataset):
 # 2- PreProcess
 # ===========================================
 def make_stationary_dataset(dataset):
+    dataset=dataset[dataset.index.year >= 1880]
     dataset["Log_Return"] = np.log(dataset["Price"]).diff()
     dataset.dropna(inplace=True)
     # print(dataset.head())
@@ -107,15 +108,16 @@ def make_stationary_dataset(dataset):
     return dataset
 
 
-def filter_early_years(dataset, start_year=1880):
-    return dataset[dataset.index.year >= start_year]
-
-
 def RNN_sequence_creation(log_return):
     series = log_return.dropna().values.reshape(-1, 1)
 
+    train_size = int(len(series) * 0.8)
+    train_series = series[:train_size]
+    test_series = series[train_size:]
+
     scaler = StandardScaler()
-    scaled_series = scaler.fit_transform(series)
+    train_scaled = scaler.fit_transform(train_series)  
+    test_scaled = scaler.transform(test_series)       
 
     def create_sequences(data, look_back=12):
         X, y = [], []
@@ -124,20 +126,15 @@ def RNN_sequence_creation(log_return):
             y.append(data[i, 0])
         return np.array(X), np.array(y)
 
-    X, y = create_sequences(scaled_series, look_back=12)
+    X_train, y_train = create_sequences(train_scaled, look_back=12)
+    X_test, y_test = create_sequences(test_scaled, look_back=12)
 
-    print(f"input shape(X): {X.shape}")
-    print(f"output shape(y): {y.shape}")
+    # print(f"input shape(X_train): {X_train.shape}")
+    # print(f"input shape(X_test): {X_test.shape}")
+    # print(f"number of training data: {len(X_train)}")
+    # print(f"number of testng data: {len(X_test)}")
 
-    train_size = int(len(X) * 0.8)
-    X_train, X_test = X[:train_size], X[train_size:]
-    y_train, y_test = y[:train_size], y[train_size:]
-
-    print(f"number of training data: {len(X_train)}")
-    print(f"number of testng data: {len(X_test)}")
-
-    return X_train, X_test, y_train, y_test
-
+    return X_train, X_test, y_train, y_test, scaler
 
 if __name__ == "__main__":
 
@@ -156,4 +153,4 @@ if __name__ == "__main__":
 
     # 2. PreProcess
     stationary_dataset = make_stationary_dataset(dataset)
-    X_train, X_test, y_train, y_test = RNN_sequence_creation(stationary_dataset["Log_Return"])
+    X_train, X_test, y_train, y_test,scaler = RNN_sequence_creation(stationary_dataset["Log_Return"])

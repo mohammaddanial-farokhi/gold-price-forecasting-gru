@@ -10,6 +10,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 import os
 
 
@@ -161,8 +162,6 @@ def build_gru_model(input_shape):
 # ===========================================
 # 4- train or load save model
 # ===========================================
-
-
 def train_rnn(model, X_train, y_train):
     MODEL_PATH = "./saved_models/gold_gru_RNN.keras"
 
@@ -198,6 +197,45 @@ def train_rnn(model, X_train, y_train):
 # ===========================================
 # 5- evaluate
 # ===========================================
+def evaluate(model):
+    test_loss = model.evaluate(X_test, y_test, verbose=0)
+    print(f"\nMSE: {test_loss:.6f}")
+
+    y_pred_scaled = model.predict(X_test).flatten()
+    y_pred = scaler.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
+    y_actual = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
+
+    return y_pred,y_actual
+
+
+# ===========================================
+# 6- show results
+# ===========================================
+def results(y_pred,y_actual,history):
+    mae = mean_absolute_error(y_actual, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_actual, y_pred))
+    print(f"MAE: {mae:.6f}")
+    print(f"RMSE: {rmse:.6f}")
+
+    plt.figure(figsize=(14, 6))
+    plt.plot(y_actual, label='main data', color='blue', linewidth=1)
+    plt.plot(y_pred, label='model prediction', color='red', linestyle='--', linewidth=1.5)
+    plt.title("Comparison of GRU predictions with actual data (Log-Return)")
+    plt.xlabel("Test samples")
+    plt.ylabel("Log return")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.show()
+
+    plt.figure(figsize=(12, 5))
+    plt.plot(history.history['loss'], label='Training error')
+    plt.plot(history.history['val_loss'], label="Validation error")
+    plt.title("Model learning curve")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -223,4 +261,11 @@ if __name__ == "__main__":
     model = build_gru_model((X_train.shape[1], 1))
     model.summary()
 
+    # 4. train or load save model
+    model, history=train_rnn(model, X_train, y_train)
 
+    # 5. evaluate
+    y_pred,y_actual=evaluate(model)
+
+    # 6. show results
+    results(y_pred,y_actual,history)

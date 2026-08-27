@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, SimpleRNN
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import GRU, Dense, Dropout
+from tensorflow.keras.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.ticker import MultipleLocator
@@ -9,6 +10,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from sklearn.preprocessing import StandardScaler
+import os
 
 
 # ===========================================
@@ -100,7 +102,7 @@ def plot_long_term_trend(dataset):
 # 2- PreProcess
 # ===========================================
 def make_stationary_dataset(dataset):
-    dataset=dataset[dataset.index.year >= 1880]
+    dataset = dataset[dataset.index.year >= 1880]
     dataset["Log_Return"] = np.log(dataset["Price"]).diff()
     dataset.dropna(inplace=True)
     # print(dataset.head())
@@ -116,8 +118,8 @@ def RNN_sequence_creation(log_return):
     test_series = series[train_size:]
 
     scaler = StandardScaler()
-    train_scaled = scaler.fit_transform(train_series)  
-    test_scaled = scaler.transform(test_series)       
+    train_scaled = scaler.fit_transform(train_series)
+    test_scaled = scaler.transform(test_series)
 
     def create_sequences(data, look_back=12):
         X, y = [], []
@@ -136,6 +138,68 @@ def RNN_sequence_creation(log_return):
 
     return X_train, X_test, y_train, y_test, scaler
 
+
+# ===========================================
+# 3- Modeling
+# ===========================================
+
+
+def build_gru_model(input_shape):
+    model = Sequential(
+        [
+            GRU(50, activation="relu", return_sequences=True, input_shape=input_shape),
+            Dropout(0.2),
+            GRU(50, activation="relu"),
+            Dropout(0.2),
+            Dense(1),
+        ]
+    )
+    model.compile(optimizer="adam", loss="mse")
+    return model
+
+
+# ===========================================
+# 4- train or load save model
+# ===========================================
+
+
+def train_rnn(model, X_train, y_train):
+    MODEL_PATH = "./saved_models/gold_gru_RNN.keras"
+
+    if os.path.exists(MODEL_PATH):
+        print("Model found. Loading the trained model...")
+        model = load_model(MODEL_PATH)
+        history = None
+
+    else:
+        print("No saved model found. Training a new model...")
+
+        early_stop = EarlyStopping(
+            monitor="val_loss",
+            patience=10,
+            restore_best_weights=True,
+        )
+
+        history = model.fit(
+            X_train,
+            y_train,
+            epochs=50,
+            batch_size=32,
+            validation_split=0.2,
+            callbacks=[early_stop],
+            verbose=1,
+        )
+
+        model.save(MODEL_PATH)
+        print("Model saved successfully.")
+
+    return model, history
+
+# ===========================================
+# 5- evaluate
+# ===========================================
+
+
 if __name__ == "__main__":
 
     dataset = pd.read_csv("monthly.csv")
@@ -153,4 +217,10 @@ if __name__ == "__main__":
 
     # 2. PreProcess
     stationary_dataset = make_stationary_dataset(dataset)
-    X_train, X_test, y_train, y_test,scaler = RNN_sequence_creation(stationary_dataset["Log_Return"])
+    X_train, X_test, y_train, y_test, scaler = RNN_sequence_creation(stationary_dataset["Log_Return"])
+
+    # 3. Modeling
+    model = build_gru_model((X_train.shape[1], 1))
+    model.summary()
+
+

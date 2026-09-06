@@ -1,18 +1,19 @@
-import pandas as pd
-import numpy as np
-from tensorflow.keras.models import Sequential, load_model
-from tensorflow.keras.layers import GRU, Dense, Dropout
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from tensorflow.keras.optimizers import Adam
-import matplotlib.pyplot as plt
+import os
+
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from matplotlib.ticker import MultipleLocator
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.preprocessing import StandardScaler
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.stattools import adfuller
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-import os
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.layers import GRU, Dense, Dropout
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.optimizers import Adam
 
 
 # ===========================================
@@ -100,7 +101,9 @@ def plot_long_term_trend(dataset):
     dataset["MA_60"] = dataset["Price"].rolling(window=60).mean()
 
     plt.figure(figsize=(14, 6))
-    plt.plot(dataset.index, dataset["Price"], label="main price", linewidth=1, alpha=0.5)
+    plt.plot(
+        dataset.index, dataset["Price"], label="main price", linewidth=1, alpha=0.5
+    )
     plt.plot(dataset.index, dataset["MA_12"], label="year AVG", linewidth=2)
     plt.plot(dataset.index, dataset["MA_60"], label="5 years AVG", linewidth=2)
     plt.legend()
@@ -172,7 +175,6 @@ def RNN_sequence_creation(log_return, look_back=12):
         X, y = [], []
 
         for i in range(look_back, len(data)):
-
             X.append(data[i - look_back : i])
             y.append(data[i, 0])
 
@@ -349,7 +351,7 @@ def results(y_pred, y_actual, history):
 
     direction_accuracy = np.mean(actual_direction == predicted_direction)
 
-    print(f"Direction Accuracy: " f"{direction_accuracy * 100:.2f}%")
+    print(f"Direction Accuracy: {direction_accuracy * 100:.2f}%")
 
     # ==========================================
     # Actual vs Prediction
@@ -377,7 +379,6 @@ def results(y_pred, y_actual, history):
     # ==========================================
 
     if history is not None:
-
         plt.figure(figsize=(12, 5))
 
         plt.plot(history.history["loss"], label="Training Loss")
@@ -396,12 +397,10 @@ def results(y_pred, y_actual, history):
         plt.show()
 
     else:
-
-        print("\nTraining history is not available " "(model was loaded from disk).")
+        print("\nTraining history is not available (model was loaded from disk).")
 
 
 if __name__ == "__main__":
-
     dataset = pd.read_csv("monthly.csv")
     dataset["Date"] = pd.to_datetime(dataset["Date"])
     dataset.set_index("Date", inplace=True)
@@ -417,8 +416,8 @@ if __name__ == "__main__":
 
     # 2. PreProcess
     stationary_dataset = make_stationary_dataset(dataset)
-    X_train, X_validation, X_test, y_train, y_validation, y_test, scaler = RNN_sequence_creation(
-        stationary_dataset["Log_Return"], look_back=12
+    X_train, X_validation, X_test, y_train, y_validation, y_test, scaler = (
+        RNN_sequence_creation(stationary_dataset["Log_Return"], look_back=12)
     )
 
     # log_return_ADF(stationary_dataset)
